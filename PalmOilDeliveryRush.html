@@ -4,715 +4,133 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Palm Oil Delivery Rush</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body, html {
+        body {
             margin: 0;
             padding: 0;
-            width: 100%;
-            height: 100%;
+            background: #111;
+            color: #fff;
+            font-family: sans-serif;
             overflow: hidden;
-            background-color: #2e7d32; /* Grass color fallback */
-            touch-action: none; /* Prevent browser zooming/scrolling */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        #gameUi {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            pointer-events: none;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        canvas {
+            border: 4px solid #333;
+            background: #2e4d26; /* Default grass color */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 100%;
+            max-height: 80vh;
+        }
+        #mobileControls {
+            display: none;
+            width: 100%;
+            max-width: 800px;
+            justify-content: space-between;
+            position: absolute;
+            bottom: 20px;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+        .btn-group { display: flex; gap: 15px; }
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             user-select: none;
             -webkit-user-select: none;
         }
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-        /* UI Overlay setup */
-        #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none; /* Let clicks pass through to canvas when needed */
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .interactive {
-            pointer-events: auto;
-        }
-        .hide {
-            display: none !important;
-        }
-        /* Touch buttons */
-        .touch-btn {
-            background: rgba(255, 255, 255, 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.6);
-            backdrop-filter: blur(4px);
-            color: white;
-            transition: background 0.2s;
-        }
-        .touch-btn:active {
-            background: rgba(255, 255, 255, 0.6);
+        .control-btn:active { background: rgba(255,255,255,0.5); }
+        
+        @media (max-width: 768px) {
+            #mobileControls { display: flex; }
         }
     </style>
 </head>
-<body class="text-white">
+<body>
 
-    <!-- Game Canvas -->
-    <canvas id="gameCanvas"></canvas>
+    <div id="gameUi">
+        <strong>🚛 PALM OIL DELIVERY RUSH</strong><br>
+        ⏱️ Time Left: <span id="uiTime">60</span>s<br>
+        🌴 Cargo: <span id="uiCargo">100</span>% (Oil)<br>
+        💰 Wallet: RM<span id="uiCash">0</span><br>
+        <small style="color: #aaa;">PC: Arrow/WASD keys | Mobile: Touch Buttons</small>
+    </div>
 
-    <!-- UI Overlay -->
-    <div id="ui-layer">
-        
-        <!-- HUD (Heads Up Display) -->
-        <div id="hud" class="w-full flex justify-between items-start p-4 interactive hide">
-            <div class="bg-black/50 backdrop-blur-md rounded-lg p-3 shadow-lg border border-white/20">
-                <div class="text-sm font-bold text-gray-300 uppercase tracking-wider">Score</div>
-                <div id="scoreDisplay" class="text-2xl font-black text-white">0</div>
-            </div>
-            <div class="flex gap-2">
-                <div class="bg-black/50 backdrop-blur-md rounded-lg p-3 shadow-lg border border-white/20 text-right">
-                    <div class="text-xs font-bold text-yellow-400 uppercase tracking-wider">High Score</div>
-                    <div id="highScoreDisplay" class="text-xl font-black text-white">0</div>
-                </div>
-                <button id="pauseBtn" class="bg-black/50 backdrop-blur-md hover:bg-black/70 rounded-lg p-3 shadow-lg border border-white/20 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-                </button>
-            </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <div id="mobileControls">
+        <div class="btn-group">
+            <div class="control-btn" id="btnLeft">◀</div>
+            <div class="control-btn" id="btnRight">▶</div>
         </div>
-
-        <!-- Mobile Controls -->
-        <div id="mobileControls" class="w-full flex justify-between p-6 interactive hide pb-12 sm:pb-6">
-            <button id="btnLeft" class="touch-btn rounded-full w-20 h-20 flex items-center justify-center shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-            </button>
-            <button id="btnRight" class="touch-btn rounded-full w-20 h-20 flex items-center justify-center shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-            </button>
+        <div class="btn-group">
+            <div class="control-btn" id="btnBrake">🛑</div>
+            <div class="control-btn" id="btnGas">⚡</div>
         </div>
-
-        <!-- Main Menu -->
-        <div id="mainMenu" class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm interactive">
-            <div class="bg-green-800/90 border-4 border-yellow-500 rounded-2xl p-8 max-w-md w-[90%] text-center shadow-2xl">
-                <h1 class="text-4xl sm:text-5xl font-black text-yellow-400 mb-2 drop-shadow-md tracking-tight">PALM OIL</h1>
-                <h2 class="text-2xl sm:text-3xl font-bold text-white mb-6 drop-shadow-md">DELIVERY RUSH</h2>
-                
-                <p class="text-green-100 mb-8 text-sm sm:text-base">
-                    Swipe or use Arrow Keys to switch lanes.<br>
-                    Avoid obstacles and collect coins!
-                </p>
-
-                <button id="startBtn" class="w-full bg-yellow-500 hover:bg-yellow-400 text-green-900 font-black text-xl py-4 rounded-xl shadow-[0_6px_0_#b45309] active:shadow-[0_0px_0_#b45309] active:translate-y-[6px] transition-all">
-                    START ENGINE
-                </button>
-            </div>
-        </div>
-
-        <!-- Game Over Screen -->
-        <div id="gameOverMenu" class="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm interactive hide">
-            <div class="bg-red-900/90 border-4 border-red-500 rounded-2xl p-8 max-w-md w-[90%] text-center shadow-2xl">
-                <h1 class="text-4xl font-black text-white mb-6 tracking-tight">CRASHED!</h1>
-                
-                <div class="flex justify-between bg-black/40 rounded-lg p-4 mb-4">
-                    <span class="text-red-200 font-bold uppercase">Final Score</span>
-                    <span id="finalScore" class="font-black text-2xl text-yellow-400">0</span>
-                </div>
-                
-                <div class="flex justify-between bg-black/40 rounded-lg p-4 mb-8">
-                    <span class="text-green-200 font-bold uppercase">High Score</span>
-                    <span id="finalHighScore" class="font-black text-xl text-white">0</span>
-                </div>
-
-                <button id="restartBtn" class="w-full bg-green-500 hover:bg-green-400 text-white font-black text-xl py-4 rounded-xl shadow-[0_6px_0_#166534] active:shadow-[0_0px_0_#166534] active:translate-y-[6px] transition-all">
-                    TRY AGAIN
-                </button>
-            </div>
-        </div>
-
-        <!-- Pause Menu -->
-        <div id="pauseMenu" class="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-md interactive hide">
-            <div class="text-center">
-                <h1 class="text-5xl font-black text-white mb-8 tracking-widest">PAUSED</h1>
-                <button id="resumeBtn" class="bg-white text-black hover:bg-gray-200 font-bold text-xl py-3 px-12 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95">
-                    RESUME
-                </button>
-            </div>
-        </div>
-
     </div>
 
     <script>
-        // --- Game Setup & State ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
-        let GAME_STATE = 'MENU'; // MENU, PLAYING, GAMEOVER, PAUSED
-        let score = 0;
-        let highScore = 0; // In-memory fallback
-        let speedMultiplier = 1;
-        let baseSpeed = 5;
-        let distanceTravelled = 0;
-        let lastTime = 0;
-        let animationId;
 
-        // --- Layout & Dimensions ---
-        let roadWidth, laneWidth, centerX;
-        const LANE_COUNT = 3;
-        
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            
-            // Responsive road width (max 600px, min 80% of screen)
-            roadWidth = Math.min(window.innerWidth * 0.85, 600);
-            laneWidth = roadWidth / LANE_COUNT;
-            centerX = canvas.width / 2;
-        }
-        window.addEventListener('resize', resize);
-        resize();
+        // UI Elements
+        const uiTime = document.getElementById('uiTime');
+        const uiCargo = document.getElementById('uiCargo');
+        const uiCash = document.getElementById('uiCash');
 
-        // --- Entities ---
-        
-        const player = {
-            lane: 0, // -1 (Left), 0 (Center), 1 (Right)
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0,
-            targetX: 0,
-            init: function() {
-                this.lane = 0;
-                this.width = Math.min(laneWidth * 0.6, 80);
-                this.height = this.width * 2.2;
-                this.y = canvas.height - this.height - 50;
-                this.targetX = centerX + (this.lane * laneWidth);
-                this.x = this.targetX;
-            },
-            update: function(deltaTime) {
-                this.width = Math.min(laneWidth * 0.6, 80);
-                this.height = this.width * 2.2;
-                this.y = canvas.height - this.height - Math.max(50, canvas.height * 0.1);
-                this.targetX = centerX + (this.lane * laneWidth);
-                
-                // Smooth lane changing (Lerp)
-                const moveSpeed = 15 * (deltaTime / 16);
-                this.x += (this.targetX - this.x) * 0.3; 
-            },
-            draw: function() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                
-                // Shadow
-                ctx.fillStyle = 'rgba(0,0,0,0.4)';
-                ctx.fillRect(-this.width/2 + 5, 5, this.width, this.height);
+        // Game State
+        let cash = 0;
+        let timeLeft = 60;
+        let gameOver = false;
 
-                // Tank (Back)
-                ctx.fillStyle = '#f59e0b'; // Amber/Palm Oil color
-                ctx.beginPath();
-                ctx.roundRect(-this.width/2, this.height * 0.25, this.width, this.height * 0.75, 8);
-                ctx.fill();
-                
-                // Tank Details (Lines)
-                ctx.strokeStyle = '#d97706';
-                ctx.lineWidth = 2;
-                for(let i=1; i<=3; i++) {
-                    ctx.beginPath();
-                    ctx.moveTo(-this.width/2, this.height * 0.25 + (this.height * 0.75 * i/4));
-                    ctx.lineTo(this.width/2, this.height * 0.25 + (this.height * 0.75 * i/4));
-                    ctx.stroke();
-                }
+        // Environment Map / Boundaries (Simple definitions)
+        const mudZone = { x: 50, y: 200, w: 350, h: 250 };
+        const factoryZone = { x: 650, y: 450, w: 120, h: 120 };
 
-                // Cab (Front)
-                ctx.fillStyle = '#e2e8f0'; // Light gray
-                ctx.beginPath();
-                ctx.roundRect(-this.width/2 * 0.8, 0, this.width * 0.8, this.height * 0.25, 6);
-                ctx.fill();
-                
-                // Windshield
-                ctx.fillStyle = '#38bdf8'; // Blue glass
-                ctx.fillRect(-this.width/2 * 0.6, 5, this.width * 0.6, this.height * 0.1);
-
-                // Wheels
-                ctx.fillStyle = '#1e293b';
-                const wheelW = this.width * 0.15;
-                const wheelH = this.height * 0.15;
-                // Front
-                ctx.fillRect(-this.width/2 - wheelW/2, this.height * 0.05, wheelW, wheelH);
-                ctx.fillRect(this.width/2 - wheelW/2, this.height * 0.05, wheelW, wheelH);
-                // Back
-                ctx.fillRect(-this.width/2 - wheelW/2, this.height * 0.7, wheelW, wheelH);
-                ctx.fillRect(this.width/2 - wheelW/2, this.height * 0.7, wheelW, wheelH);
-
-                ctx.restore();
-            }
+        // Truck Object (Medium Tanker Baseline)
+        const truck = {
+            x: 100,
+            y: 100,
+            width: 30,
+            height: 60,
+            angle: 0,
+            speed: 0,
+            maxSpeed: 4,
+            accel: 0.1,
+            friction: 0.05,
+            steerSpeed: 0.04,
+            cargo: 100,      // Percentage of oil remaining
+            sloshAmount: 0   // Simulated physics visual offset
         };
 
-        let entities = [];
-        let environmentLines = [];
-        let backgroundTrees = [];
+        // Input Handling
+        const keys = { Forward: false, Backward: false, Left: false, Right: false };
 
-        class EnvironmentLine {
-            constructor() {
-                this.y = Math.random() * canvas.height;
-                this.height = 40;
-            }
-            update(speed) {
-                this.y += speed;
-                if (this.y > canvas.height) {
-                    this.y = -this.height;
-                }
-            }
-            draw() {
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                // Draw dashed lines between lanes
-                for (let i = 1; i < LANE_COUNT; i++) {
-                    const lineX = centerX - (roadWidth/2) + (i * laneWidth);
-                    ctx.fillRect(lineX - 2, this.y, 4, this.height);
-                }
-            }
-        }
-
-        class BackgroundTree {
-            constructor() {
-                this.y = -50 - Math.random() * 200;
-                // Place randomly on either left or right outside the road
-                this.side = Math.random() > 0.5 ? 1 : -1;
-                this.xOffset = (roadWidth / 2) + 20 + Math.random() * 100;
-                this.scale = 0.5 + Math.random() * 0.8;
-                this.rotation = Math.random() * Math.PI * 2;
-            }
-            update(speed) {
-                this.y += speed * 0.8; // Parallax effect
-                if (this.y > canvas.height + 100) {
-                    this.y = -100;
-                    this.side = Math.random() > 0.5 ? 1 : -1;
-                    this.xOffset = (roadWidth / 2) + 20 + Math.random() * ((canvas.width - roadWidth)/2);
-                }
-            }
-            draw() {
-                const x = centerX + (this.side * this.xOffset);
-                ctx.save();
-                ctx.translate(x, this.y);
-                ctx.scale(this.scale, this.scale);
-                
-                // Shadow
-                ctx.fillStyle = 'rgba(0,0,0,0.2)';
-                ctx.beginPath();
-                ctx.arc(10, 10, 30, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Trunk
-                ctx.fillStyle = '#78350f';
-                ctx.beginPath();
-                ctx.arc(0, 0, 8, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Leaves
-                ctx.fillStyle = '#166534';
-                ctx.rotate(this.rotation);
-                for(let i=0; i<6; i++) {
-                    ctx.rotate(Math.PI / 3);
-                    ctx.beginPath();
-                    ctx.ellipse(20, 0, 25, 8, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                    // Leaf detail
-                    ctx.strokeStyle = '#14532d';
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(0,0);
-                    ctx.lineTo(40, 0);
-                    ctx.stroke();
-                }
-
-                ctx.restore();
-            }
-        }
-
-        class Entity {
-            constructor(lane, type) {
-                this.lane = lane; // -1, 0, 1
-                this.type = type; // 'TREE', 'TRACTOR', 'BARRIER', 'COIN'
-                this.y = -100;
-                this.markedForDeletion = false;
-                this.width = laneWidth * 0.7;
-                this.height = this.width;
-                this.x = 0; // Calculated in update
-            }
-            update(speed) {
-                this.y += speed;
-                this.x = centerX + (this.lane * laneWidth);
-                if (this.y > canvas.height + 150) {
-                    this.markedForDeletion = true;
-                }
-            }
-            draw() {
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                
-                // Shadow
-                ctx.fillStyle = 'rgba(0,0,0,0.3)';
-                ctx.beginPath();
-                ctx.ellipse(5, 5, this.width/2, this.height/2, 0, 0, Math.PI*2);
-                ctx.fill();
-
-                if (this.type === 'COIN') {
-                    // Coin
-                    this.width = 30;
-                    this.height = 30;
-                    ctx.fillStyle = '#fbbf24';
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 15, 0, Math.PI*2);
-                    ctx.fill();
-                    ctx.strokeStyle = '#d97706';
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
-                    ctx.fillStyle = '#b45309';
-                    ctx.font = 'bold 16px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('$', 0, 0);
-
-                } else if (this.type === 'TREE') {
-                    // Fallen Tree
-                    this.height = this.width * 0.4;
-                    ctx.fillStyle = '#5c4033';
-                    ctx.beginPath();
-                    ctx.roundRect(-this.width/2, -this.height/2, this.width, this.height, 5);
-                    ctx.fill();
-                    // Branches
-                    ctx.fillStyle = '#2e8b57';
-                    ctx.beginPath();
-                    ctx.arc(-this.width/3, -this.height/2, 12, 0, Math.PI*2);
-                    ctx.arc(this.width/3, this.height/2, 10, 0, Math.PI*2);
-                    ctx.fill();
-
-                } else if (this.type === 'BARRIER') {
-                    // Road Barrier
-                    this.height = 20;
-                    ctx.fillStyle = '#f97316';
-                    ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
-                    // Stripes
-                    ctx.fillStyle = 'white';
-                    for(let i=0; i<4; i++) {
-                        ctx.fillRect(-this.width/2 + (i * this.width/4) + 5, -this.height/2, this.width/8, this.height);
-                    }
-                } else if (this.type === 'TRACTOR') {
-                    // Tractor (moving slightly slower than road = moving down relative to player)
-                    this.height = this.width * 1.5;
-                    ctx.fillStyle = '#dc2626'; // Red body
-                    ctx.beginPath();
-                    ctx.roundRect(-this.width/2.5, -this.height/2, this.width/1.25, this.height, 4);
-                    ctx.fill();
-                    
-                    // Engine block
-                    ctx.fillStyle = '#333';
-                    ctx.fillRect(-this.width/4, -this.height/2, this.width/2, this.height/2.5);
-                    
-                    // Roof
-                    ctx.fillStyle = '#fca5a5';
-                    ctx.fillRect(-this.width/3, 0, this.width/1.5, this.height/3);
-                    
-                    // Huge back wheels
-                    ctx.fillStyle = 'black';
-                    const wheelW = 12;
-                    const wheelH = 30;
-                    ctx.fillRect(-this.width/2, this.height/6, wheelW, wheelH);
-                    ctx.fillRect(this.width/2 - wheelW, this.height/6, wheelW, wheelH);
-                    // Small front wheels
-                    ctx.fillRect(-this.width/2.2, -this.height/2.5, wheelW-4, wheelH-10);
-                    ctx.fillRect(this.width/2.2 - (wheelW-4), -this.height/2.5, wheelW-4, wheelH-10);
-                }
-
-                ctx.restore();
-            }
-        }
-
-        // --- Game Logic ---
-
-        let spawnTimer = 0;
-        
-        function spawnEntities() {
-            spawnTimer++;
-            // Spawn rate gets faster as speed multiplier increases
-            const currentSpawnRate = Math.max(30, 80 - (speedMultiplier * 10)); 
-            
-            if (spawnTimer > currentSpawnRate) {
-                spawnTimer = 0;
-                
-                // Determine lanes
-                let availableLanes = [-1, 0, 1];
-                
-                // Shuffle array
-                availableLanes.sort(() => Math.random() - 0.5);
-                
-                // Decide what to spawn (Obstacles vs Coins)
-                const numObstacles = Math.random() > (0.8 - speedMultiplier*0.1) ? 2 : 1;
-                
-                for(let i=0; i<numObstacles; i++) {
-                    const lane = availableLanes.pop();
-                    const types = ['TREE', 'BARRIER', 'TRACTOR'];
-                    const type = types[Math.floor(Math.random() * types.length)];
-                    entities.push(new Entity(lane, type));
-                }
-
-                // Chance to spawn coin in remaining lane
-                if (Math.random() > 0.4 && availableLanes.length > 0) {
-                    entities.push(new Entity(availableLanes.pop(), 'COIN'));
-                }
-            }
-        }
-
-        function checkCollisions() {
-            const playerRect = {
-                x: player.x - player.width/2.5, // Slightly smaller hitbox for forgiveness
-                y: player.y,
-                w: player.width * 0.8,
-                h: player.height * 0.9
-            };
-
-            for (let i = 0; i < entities.length; i++) {
-                const ent = entities[i];
-                if (ent.markedForDeletion) continue;
-
-                // Adjust hitbox based on entity type
-                let entW = ent.width;
-                let entH = ent.height;
-                if (ent.type === 'COIN') { entW = 20; entH = 20; }
-                if (ent.type === 'BARRIER') { entH = 20; }
-
-                const entRect = {
-                    x: ent.x - entW/2,
-                    y: ent.y - entH/2,
-                    w: entW,
-                    h: entH
-                };
-
-                // AABB Collision
-                if (playerRect.x < entRect.x + entRect.w &&
-                    playerRect.x + playerRect.w > entRect.x &&
-                    playerRect.y < entRect.y + entRect.h &&
-                    playerRect.y + playerRect.h > entRect.y) {
-                    
-                    if (ent.type === 'COIN') {
-                        score += 50;
-                        ent.markedForDeletion = true;
-                        updateScoreDisplay();
-                        // Simple flash effect on text
-                        const scoreEl = document.getElementById('scoreDisplay');
-                        scoreEl.classList.add('text-yellow-400');
-                        setTimeout(() => scoreEl.classList.remove('text-yellow-400'), 200);
-                    } else {
-                        // Crashed into obstacle
-                        gameOver();
-                    }
-                }
-            }
-        }
-
-        function initGame() {
-            player.init();
-            entities = [];
-            environmentLines = [];
-            backgroundTrees = [];
-            score = 0;
-            distanceTravelled = 0;
-            speedMultiplier = 1;
-            spawnTimer = 0;
-            
-            for (let i = 0; i < 15; i++) {
-                let line = new EnvironmentLine();
-                line.y = (canvas.height / 15) * i;
-                environmentLines.push(line);
-            }
-            
-            for (let i = 0; i < 8; i++) {
-                let tree = new BackgroundTree();
-                tree.y = (canvas.height / 8) * i;
-                backgroundTrees.push(tree);
-            }
-
-            updateScoreDisplay();
-        }
-
-        function updateScoreDisplay() {
-            document.getElementById('scoreDisplay').innerText = Math.floor(score);
-            document.getElementById('highScoreDisplay').innerText = Math.floor(highScore);
-        }
-
-        function gameOver() {
-            GAME_STATE = 'GAMEOVER';
-            if (score > highScore) highScore = score;
-            
-            document.getElementById('finalScore').innerText = Math.floor(score);
-            document.getElementById('finalHighScore').innerText = Math.floor(highScore);
-            
-            document.getElementById('hud').classList.add('hide');
-            document.getElementById('mobileControls').classList.add('hide');
-            document.getElementById('gameOverMenu').classList.remove('hide');
-        }
-
-        // --- Controls ---
-        
-        function moveLeft() {
-            if (GAME_STATE !== 'PLAYING') return;
-            if (player.lane > -1) player.lane--;
-        }
-        
-        function moveRight() {
-            if (GAME_STATE !== 'PLAYING') return;
-            if (player.lane < 1) player.lane++;
-        }
-
-        function togglePause() {
-            if (GAME_STATE === 'PLAYING') {
-                GAME_STATE = 'PAUSED';
-                document.getElementById('pauseMenu').classList.remove('hide');
-            } else if (GAME_STATE === 'PAUSED') {
-                GAME_STATE = 'PLAYING';
-                document.getElementById('pauseMenu').classList.add('hide');
-                lastTime = performance.now();
-                requestAnimationFrame(gameLoop);
-            }
-        }
-
-        // Keyboard
+        // Keyboard Event Listeners
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'a') moveLeft();
-            if (e.key === 'ArrowRight' || e.key === 'd') moveRight();
-            if (e.key === 'Escape' || e.key === 'p') togglePause();
-        });
-
-        // Touch Swipe
-        let touchStartX = 0;
-        let touchStartY = 0;
-        window.addEventListener('touchstart', e => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }, {passive: false});
-        
-        window.addEventListener('touchmove', e => {
-            // Prevent scrolling while playing
-            if(GAME_STATE === 'PLAYING') e.preventDefault();
-        }, {passive: false});
-
-        window.addEventListener('touchend', e => {
-            if (GAME_STATE !== 'PLAYING') return;
-            let touchEndX = e.changedTouches[0].screenX;
-            let touchEndY = e.changedTouches[0].screenY;
-            
-            // Calculate distance
-            let dx = touchEndX - touchStartX;
-            let dy = touchEndY - touchStartY;
-            
-            // Only trigger if horizontal swipe is larger than vertical (and significant enough)
-            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
-                if (dx < 0) moveLeft();
-                else moveRight();
-            }
-        });
-
-        // On-Screen Buttons
-        document.getElementById('btnLeft').addEventListener('touchstart', (e) => { e.preventDefault(); moveLeft(); });
-        document.getElementById('btnLeft').addEventListener('mousedown', moveLeft);
-        
-        document.getElementById('btnRight').addEventListener('touchstart', (e) => { e.preventDefault(); moveRight(); });
-        document.getElementById('btnRight').addEventListener('mousedown', moveRight);
-
-        document.getElementById('pauseBtn').addEventListener('click', togglePause);
-        document.getElementById('resumeBtn').addEventListener('click', togglePause);
-
-        // State Transitions
-        function startGame() {
-            initGame();
-            GAME_STATE = 'PLAYING';
-            document.getElementById('mainMenu').classList.add('hide');
-            document.getElementById('gameOverMenu').classList.add('hide');
-            document.getElementById('hud').classList.remove('hide');
-            
-            // Show mobile controls on small screens
-            if (window.innerWidth < 768) {
-                document.getElementById('mobileControls').classList.remove('hide');
-            }
-            
-            lastTime = performance.now();
-            requestAnimationFrame(gameLoop);
-        }
-
-        document.getElementById('startBtn').addEventListener('click', startGame);
-        document.getElementById('restartBtn').addEventListener('click', startGame);
-
-        // --- Main Loop ---
-
-        function drawBackground() {
-            // Grass
-            ctx.fillStyle = '#4ade80';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Draw background trees behind road
-            backgroundTrees.forEach(tree => tree.draw());
-
-            // Road
-            ctx.fillStyle = '#334155'; // Dark slate
-            ctx.fillRect(centerX - roadWidth/2, 0, roadWidth, canvas.height);
-
-            // Road border (Dirt edge)
-            ctx.fillStyle = '#a16207';
-            ctx.fillRect(centerX - roadWidth/2 - 10, 0, 10, canvas.height);
-            ctx.fillRect(centerX + roadWidth/2, 0, 10, canvas.height);
-        }
-
-        function gameLoop(timestamp) {
-            if (GAME_STATE !== 'PLAYING') return;
-
-            const deltaTime = timestamp - lastTime;
-            lastTime = timestamp;
-
-            // Update Game Logic
-            const currentSpeed = baseSpeed * speedMultiplier * (deltaTime / 16);
-            distanceTravelled += currentSpeed;
-            score += currentSpeed * 0.01;
-            speedMultiplier = 1 + (distanceTravelled / 20000); // Slowly increase difficulty
-
-            if (Math.floor(distanceTravelled) % 30 === 0) updateScoreDisplay();
-
-            // Environment
-            environmentLines.forEach(line => line.update(currentSpeed));
-            backgroundTrees.forEach(tree => tree.update(currentSpeed));
-            
-            // Spawning
-            spawnEntities();
-
-            // Entities update
-            for (let i = entities.length - 1; i >= 0; i--) {
-                let ent = entities[i];
-                ent.update(currentSpeed);
-                if (ent.markedForDeletion) {
-                    entities.splice(i, 1);
-                }
-            }
-
-            player.update(deltaTime);
-            checkCollisions();
-
-            if (GAME_STATE === 'GAMEOVER') return; // Stop drawing if crashed this frame
-
-            // --- Rendering ---
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            drawBackground();
-            environmentLines.forEach(line => line.draw());
-            
-            // Sort entities by Y so lower objects render on top (pseudo-depth)
-            entities.sort((a,b) => a.y - b.y);
-            
-            entities.forEach(ent => ent.draw());
-            player.draw();
-
-            // Request next frame
-            animationId = requestAnimationFrame(gameLoop);
-        }
-        
-        // Initial Draw for background on menu
-        drawBackground();
-
-    </script>
-</body>
-</html>
+            if (['ArrowUp', 'w', 'W'].includes(e.key)) keys.Forward = true;
+            if (['ArrowDown', 's', 'S'].includes(e.key)) keys.Backward = true;
+            if (['ArrowLeft', 'a', 'A'].includes(e.Normally I can help with things like this, but I don't seem to have access to that content. You can try again or ask me for something else.
